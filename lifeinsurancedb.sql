@@ -1,0 +1,271 @@
+-- ============================================================
+-- Life Insurance Policy and Mortality Analysis Database
+-- Deliverable 4 - Complete DDL and DML
+-- ============================================================
+
+-- ============================================================
+-- DDL: CREATE TABLES
+-- ============================================================
+
+-- Drop tables in reverse dependency order to avoid FK conflicts
+DROP TABLE IF EXISTS MortalityRateUltimate;
+DROP TABLE IF EXISTS Claim;
+DROP TABLE IF EXISTS Beneficiary;
+DROP TABLE IF EXISTS Policy;
+DROP TABLE IF EXISTS Policyholder;
+DROP TABLE IF EXISTS UnderwritingClass;
+DROP TABLE IF EXISTS PolicyStatus;
+DROP TABLE IF EXISTS MortalityBasis;
+
+-- ------------------------------------------------------------
+-- Lookup / Reference Tables
+-- ------------------------------------------------------------
+
+CREATE TABLE UnderwritingClass (
+    class_id    INT             NOT NULL,
+    class_name  VARCHAR(100)    NOT NULL,
+    description TEXT,
+    CONSTRAINT pk_underwritingclass PRIMARY KEY (class_id)
+);
+
+CREATE TABLE PolicyStatus (
+    status_id   INT             NOT NULL,
+    status_name VARCHAR(50)     NOT NULL,
+    CONSTRAINT pk_policystatus PRIMARY KEY (status_id)
+);
+
+CREATE TABLE MortalityBasis (
+    basis_id    INT             NOT NULL,
+    basis_name  VARCHAR(100)    NOT NULL,
+    description TEXT,
+    source      VARCHAR(100),
+    CONSTRAINT pk_mortalitybasis PRIMARY KEY (basis_id)
+);
+
+-- ------------------------------------------------------------
+-- Core Entity Tables
+-- ------------------------------------------------------------
+
+CREATE TABLE Policyholder (
+    policyholder_id INT             NOT NULL,
+    first_name      VARCHAR(100)    NOT NULL,
+    last_name       VARCHAR(100)    NOT NULL,
+    date_of_birth   DATE            NOT NULL,
+    sex             CHAR(1)         NOT NULL,
+    CONSTRAINT pk_policyholder PRIMARY KEY (policyholder_id),
+    CONSTRAINT chk_policyholder_sex CHECK (sex IN ('M', 'F'))
+);
+
+CREATE TABLE Policy (
+    policy_id       INT             NOT NULL,
+    policyholder_id INT             NOT NULL,
+    issue_date      DATE            NOT NULL,
+    issue_age       INT             NOT NULL,
+    face_amount     DECIMAL(15,2)   NOT NULL,
+    class_id        INT             NOT NULL,
+    status_id       INT             NOT NULL,
+    basis_id        INT             NOT NULL,
+    CONSTRAINT pk_policy PRIMARY KEY (policy_id),
+    CONSTRAINT fk_policy_policyholder  FOREIGN KEY (policyholder_id) REFERENCES Policyholder(policyholder_id),
+    CONSTRAINT fk_policy_class         FOREIGN KEY (class_id)        REFERENCES UnderwritingClass(class_id),
+    CONSTRAINT fk_policy_status        FOREIGN KEY (status_id)       REFERENCES PolicyStatus(status_id),
+    CONSTRAINT fk_policy_basis         FOREIGN KEY (basis_id)        REFERENCES MortalityBasis(basis_id),
+    CONSTRAINT chk_policy_issue_age    CHECK (issue_age >= 0),
+    CONSTRAINT chk_policy_face_amount  CHECK (face_amount > 0)
+);
+
+CREATE TABLE Beneficiary (
+    beneficiary_id   INT             NOT NULL,
+    policy_id        INT             NOT NULL,
+    first_name       VARCHAR(100)    NOT NULL,
+    last_name        VARCHAR(100)    NOT NULL,
+    relationship     VARCHAR(50)     NOT NULL,
+    percentage_share DECIMAL(5,2)    NOT NULL,
+    CONSTRAINT pk_beneficiary PRIMARY KEY (beneficiary_id),
+    CONSTRAINT fk_beneficiary_policy   FOREIGN KEY (policy_id) REFERENCES Policy(policy_id),
+    CONSTRAINT chk_beneficiary_pct     CHECK (percentage_share > 0 AND percentage_share <= 100)
+);
+
+CREATE TABLE Claim (
+    claim_id     INT             NOT NULL,
+    policy_id    INT             NOT NULL,
+    date_of_death DATE           NOT NULL,
+    claim_amount  DECIMAL(15,2)  NOT NULL,
+    claim_status  VARCHAR(50)    NOT NULL,
+    CONSTRAINT pk_claim PRIMARY KEY (claim_id),
+    CONSTRAINT fk_claim_policy   FOREIGN KEY (policy_id) REFERENCES Policy(policy_id),
+    CONSTRAINT chk_claim_amount  CHECK (claim_amount > 0)
+);
+
+CREATE TABLE MortalityRateUltimate (
+    basis_id    INT             NOT NULL,
+    sex         CHAR(1)         NOT NULL,
+    attained_age INT            NOT NULL,
+    qx          DECIMAL(10,8)   NOT NULL,
+    CONSTRAINT pk_mortalityrate PRIMARY KEY (basis_id, sex, attained_age),
+    CONSTRAINT fk_mortalityrate_basis FOREIGN KEY (basis_id) REFERENCES MortalityBasis(basis_id),
+    CONSTRAINT chk_mortalityrate_sex  CHECK (sex IN ('M', 'F')),
+    CONSTRAINT chk_mortalityrate_age  CHECK (attained_age >= 0),
+    CONSTRAINT chk_mortalityrate_qx   CHECK (qx >= 0 AND qx <= 1)
+);
+
+
+-- ============================================================
+-- DML: INSERT SAMPLE DATA
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- UnderwritingClass  (5 rows)
+-- ------------------------------------------------------------
+INSERT INTO UnderwritingClass (class_id, class_name, description) VALUES
+(1, 'Preferred Plus',  'Best risk class; non-smoker with excellent health history and lab results'),
+(2, 'Preferred',       'Non-smoker with very good health; minor medical history acceptable'),
+(3, 'Standard Plus',   'Non-smoker with good health; slightly elevated risk factors'),
+(4, 'Standard',        'Average mortality risk; may have moderate health issues'),
+(5, 'Substandard',     'Higher-than-average mortality risk; significant health impairments');
+
+-- ------------------------------------------------------------
+-- PolicyStatus  (5 rows)
+-- ------------------------------------------------------------
+INSERT INTO PolicyStatus (status_id, status_name) VALUES
+(1, 'Active'),
+(2, 'Lapsed'),
+(3, 'Terminated due to Death'),
+(4, 'Surrendered'),
+(5, 'Pending');
+
+-- ------------------------------------------------------------
+-- MortalityBasis  (5 rows)
+-- ------------------------------------------------------------
+INSERT INTO MortalityBasis (basis_id, basis_name, description, source) VALUES
+(1, '2017 CSO Ultimate Composite',
+   'Unloaded 2017 Commissioner Standard Ordinary ultimate mortality table, composite sex',
+   'Society of Actuaries'),
+(2, '2017 CSO Ultimate Male',
+   'Unloaded 2017 CSO ultimate mortality rates for males',
+   'Society of Actuaries'),
+(3, '2017 CSO Ultimate Female',
+   'Unloaded 2017 CSO ultimate mortality rates for females',
+   'Society of Actuaries'),
+(4, '2001 CSO Ultimate',
+   '2001 Commissioner Standard Ordinary ultimate mortality table',
+   'Society of Actuaries'),
+(5, '1980 CSO',
+   '1980 Commissioner Standard Ordinary mortality table',
+   'National Association of Insurance Commissioners');
+
+-- ------------------------------------------------------------
+-- Policyholder  (10 rows)
+-- ------------------------------------------------------------
+INSERT INTO Policyholder (policyholder_id, first_name, last_name, date_of_birth, sex) VALUES
+(1,  'James',    'Harrison',   '1975-03-14', 'M'),
+(2,  'Linda',    'Nguyen',     '1982-07-22', 'F'),
+(3,  'Robert',   'Patel',      '1968-11-05', 'M'),
+(4,  'Maria',    'Gonzalez',   '1990-01-30', 'F'),
+(5,  'William',  'Chen',       '1955-09-18', 'M'),
+(6,  'Patricia', 'Okafor',     '1978-06-03', 'F'),
+(7,  'Michael',  'Thompson',   '1963-12-27', 'M'),
+(8,  'Susan',    'Kim',        '1988-04-11', 'F'),
+(9,  'David',    'Martinez',   '1950-08-09', 'M'),
+(10, 'Jennifer', 'Williams',   '1995-02-17', 'F');
+
+-- ------------------------------------------------------------
+-- Policy  (10 rows)
+-- ------------------------------------------------------------
+INSERT INTO Policy (policy_id, policyholder_id, issue_date, issue_age, face_amount, class_id, status_id, basis_id) VALUES
+(1001, 1,  '2010-06-01', 35, 500000.00,  1, 1, 2),
+(1002, 2,  '2015-03-15', 33, 250000.00,  2, 1, 3),
+(1003, 3,  '2005-09-20', 37, 750000.00,  3, 3, 2),
+(1004, 4,  '2020-01-10', 30, 300000.00,  1, 1, 3),
+(1005, 5,  '2000-11-01', 45, 1000000.00, 4, 2, 2),
+(1006, 6,  '2012-07-22', 34, 400000.00,  2, 1, 3),
+(1007, 7,  '2008-04-05', 45, 600000.00,  3, 1, 2),
+(1008, 8,  '2018-10-30', 30, 200000.00,  1, 4, 3),
+(1009, 9,  '1998-02-14', 48, 850000.00,  5, 3, 2),
+(1010, 10, '2022-05-19', 27, 150000.00,  2, 1, 3);
+
+-- ------------------------------------------------------------
+-- Beneficiary  (12 rows — multiple per some policies)
+-- ------------------------------------------------------------
+INSERT INTO Beneficiary (beneficiary_id, policy_id, first_name, last_name, relationship, percentage_share) VALUES
+(1,  1001, 'Sarah',   'Harrison',  'Spouse',  100.00),
+(2,  1002, 'Thomas',  'Nguyen',    'Spouse',   60.00),
+(3,  1002, 'Emily',   'Nguyen',    'Child',    40.00),
+(4,  1003, 'Clara',   'Patel',     'Spouse',   50.00),
+(5,  1003, 'Raj',     'Patel',     'Child',    50.00),
+(6,  1004, 'Carlos',  'Gonzalez',  'Sibling',  100.00),
+(7,  1005, 'Dorothy', 'Chen',      'Spouse',   70.00),
+(8,  1005, 'Kevin',   'Chen',      'Child',    30.00),
+(9,  1006, 'Emeka',   'Okafor',    'Spouse',  100.00),
+(10, 1007, 'Anna',    'Thompson',  'Spouse',   80.00),
+(11, 1007, 'Luke',    'Thompson',  'Child',    20.00),
+(12, 1008, 'Grace',   'Kim',       'Parent',  100.00);
+
+-- ------------------------------------------------------------
+-- Claim  (5 rows — for policies with status 'Terminated due to Death')
+-- ------------------------------------------------------------
+INSERT INTO Claim (claim_id, policy_id, date_of_death, claim_amount, claim_status) VALUES
+(2001, 1003, '2021-03-12', 750000.00, 'Paid'),
+(2002, 1009, '2019-11-28', 850000.00, 'Paid'),
+(2003, 1003, '2021-03-12', 750000.00, 'Approved'),   -- illustrative duplicate for testing
+(2004, 1009, '2019-11-28', 850000.00, 'Approved'),
+(2005, 1005, '2023-07-04', 1000000.00,'Pending');
+
+-- Note: Claim 2003/2004 rows illustrate different claim_status values on the same
+-- underlying event for testing query logic; in a production system a unique
+-- constraint on policy_id might be enforced at the application layer.
+
+-- ------------------------------------------------------------
+-- MortalityRateUltimate
+-- 2017 CSO Ultimate rates (qx) for basis_id = 2 (Male) and 3 (Female)
+-- Sample ages 30-39 shown; production table would cover ages 0-120
+-- ------------------------------------------------------------
+
+-- Male rates (basis_id = 2)
+INSERT INTO MortalityRateUltimate (basis_id, sex, attained_age, qx) VALUES
+(2, 'M', 30, 0.00083000),
+(2, 'M', 31, 0.00089000),
+(2, 'M', 32, 0.00096000),
+(2, 'M', 33, 0.00104000),
+(2, 'M', 34, 0.00112000),
+(2, 'M', 35, 0.00121000),
+(2, 'M', 36, 0.00131000),
+(2, 'M', 37, 0.00142000),
+(2, 'M', 38, 0.00154000),
+(2, 'M', 39, 0.00167000),
+(2, 'M', 40, 0.00182000),
+(2, 'M', 45, 0.00281000),
+(2, 'M', 50, 0.00453000),
+(2, 'M', 55, 0.00732000),
+(2, 'M', 60, 0.01196000),
+(2, 'M', 65, 0.01935000),
+(2, 'M', 70, 0.03088000),
+(2, 'M', 75, 0.04890000),
+(2, 'M', 80, 0.07650000),
+(2, 'M', 85, 0.11780000);
+
+-- Female rates (basis_id = 3)
+INSERT INTO MortalityRateUltimate (basis_id, sex, attained_age, qx) VALUES
+(3, 'F', 30, 0.00038000),
+(3, 'F', 31, 0.00041000),
+(3, 'F', 32, 0.00044000),
+(3, 'F', 33, 0.00047000),
+(3, 'F', 34, 0.00051000),
+(3, 'F', 35, 0.00055000),
+(3, 'F', 36, 0.00059000),
+(3, 'F', 37, 0.00064000),
+(3, 'F', 38, 0.00069000),
+(3, 'F', 39, 0.00075000),
+(3, 'F', 40, 0.00082000),
+(3, 'F', 45, 0.00140000),
+(3, 'F', 50, 0.00244000),
+(3, 'F', 55, 0.00418000),
+(3, 'F', 60, 0.00703000),
+(3, 'F', 65, 0.01156000),
+(3, 'F', 70, 0.01873000),
+(3, 'F', 75, 0.02990000),
+(3, 'F', 80, 0.04780000),
+(3, 'F', 85, 0.07560000);
+
+
+
