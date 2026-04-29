@@ -30,7 +30,7 @@ spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 **Always run `git pull` first** before making any changes. This ensures your local copy is up to date and helps avoid merge conflicts.
 
 ```bash
-git pull
+git pull origin main
 git add .
 git commit -m "your message here"
 git push origin main
