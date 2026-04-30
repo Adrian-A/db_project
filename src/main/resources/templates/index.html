@@ -1,0 +1,32 @@
+<table xmlns:th="http://www.w3.org/1999/xhtml">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Policy ID</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Relationship</th>
+        <th>% Share</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="ben : ${beneficiaries}">
+        <td th:text="${ben.beneficiary_id}"></td>
+        <td th:text="${ben.policy_id}"></td>
+        <td th:text="${ben.first_name}"></td>
+        <td th:text="${ben.last_name}"></td>
+        <td th:text="${ben.relationship}"></td>
+        <td th:text="${ben.percentage_share}"></td>
+    </tr>
+    </tbody>
+</table>
+
+<form action="/add" method="post">
+    <input type="number" name="benID" placeholder="Ben ID">
+    <input type="number" name="polID" placeholder="Policy ID">
+    <input type="text" name="first" placeholder="First Name">
+    <input type="text" name="last" placeholder="Last Name">
+    <input type="text" name="rel" placeholder="Relationship">
+    <input type="number" name="pct" placeholder="Percentage">
+    <button type="submit">Add Beneficiary</button>
+</form>
