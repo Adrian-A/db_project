@@ -34,3 +34,9 @@ git pull origin main
 git add .
 git commit -m "your message here"
 git push origin main
+```
+
+## 5. Running Webpage
+1. Run JdbcTestApplication.java
+2. Enter http://localhost:8080/ into a browser
+
