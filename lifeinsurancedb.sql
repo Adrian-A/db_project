@@ -268,4 +268,73 @@ INSERT INTO MortalityRateUltimate (basis_id, sex, attained_age, qx) VALUES
 (3, 'F', 85, 0.07560000);
 
 
+-- ============================================================
+-- TRIGGERS
+-- ============================================================
 
+-- ------------------------------------------------------------
+-- Trigger 1: When a claim is inserted with status 'Paid',
+-- automatically set the associated policy status to
+-- 'Terminated due to Death' (status_id = 3).
+-- ------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER trg_claim_paid_close_policy
+AFTER INSERT ON Claim
+FOR EACH ROW
+BEGIN
+    IF NEW.claim_status = 'Paid' THEN
+        UPDATE Policy
+        SET status_id = 3
+        WHERE policy_id = NEW.policy_id;
+    END IF;
+END$$
+DELIMITER ;
+
+-- ------------------------------------------------------------
+-- Trigger 2: Before inserting a new beneficiary, verify that
+-- the sum of percentage_share for that policy does not exceed
+-- 100%. Raises an error if the new row would push it over.
+-- ------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER trg_beneficiary_pct_check
+BEFORE INSERT ON Beneficiary
+FOR EACH ROW
+BEGIN
+    DECLARE current_total DECIMAL(5,2);
+
+    SELECT COALESCE(SUM(percentage_share), 0)
+    INTO   current_total
+    FROM   Beneficiary
+    WHERE  policy_id = NEW.policy_id;
+
+    IF current_total + NEW.percentage_share > 100.00 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Total beneficiary percentage share for this policy cannot exceed 100%.';
+    END IF;
+END$$
+DELIMITER ;
+
+-- ------------------------------------------------------------
+-- Trigger 3: Before deleting a policy, block the deletion if
+-- any claim tied to that policy is still Pending or Approved.
+-- This prevents removing a policy while a live claim exists.
+-- ------------------------------------------------------------
+DELIMITER $$
+CREATE TRIGGER trg_block_policy_delete_with_open_claims
+BEFORE DELETE ON Policy
+FOR EACH ROW
+BEGIN
+    DECLARE open_claims INT;
+
+    SELECT COUNT(*)
+    INTO   open_claims
+    FROM   Claim
+    WHERE  policy_id    = OLD.policy_id
+      AND  claim_status IN ('Pending', 'Approved');
+
+    IF open_claims > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Cannot delete a policy that has pending or approved claims.';
+    END IF;
+END$$
+DELIMITER ;
