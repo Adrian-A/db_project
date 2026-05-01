@@ -1,6 +1,6 @@
 -- ============================================================
 -- Life Insurance Policy and Mortality Analysis Database
--- Deliverable 4 - Complete DDL and DML
+-- Deliverable 5 - Complete DDL and DML
 -- ============================================================
 
 -- ============================================================
