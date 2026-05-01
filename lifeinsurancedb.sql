@@ -374,13 +374,115 @@ SELECT
     b.relationship,
     b.percentage_share,
     p.face_amount,
-    ROUND(p.face_amount * (b.percentage_share / 100, 2) AS estimated_payout) -- rounding the amount to cents
+    ROUND(p.face_amount * (b.percentage_share / 100), 2) AS estimated_payout -- rounding the amount to cents
 FROM Beneficiary b
 JOIN Policy p ON b.policy_id = p.policy_id;
 
 
+-- ===================================================
+-- 5 SQL Queries
+-- ===================================================
+
+-- Query 1: Show all *ACTIVE* policies with policyholder, class, status, and mortality basis
+-- Uses joins
+SELECT
+    p.policy_id,
+    CONCAT(ph.first_name, ' ', ph.last_name) AS policyholder_name,
+    ph.sex,
+    p.issue_date,
+    p.issue_age,
+    p.face_amount,
+    uc.class_name,
+    ps.status_name,
+    mb.basis_name
+FROM Policy p
+JOIN Policyholder ph ON p.policyholder_id = ph.policyholder_id
+JOIN UnderwritingClass uc ON p.class_id = uc.class_id
+JOIN PolicyStatus ps ON p.status_id = ps.status_id
+JOIN MortalityBasis mb ON p.basis_id = mb.basis_id
+WHERE ps.status_name = 'Active';
+
+-- Query 2: Calculate the total face amount by policy status (uses joins and aggregation)
+SELECT
+	ps.status_name,
+    COUNT(p.policy_id) AS number_of_policies,
+    SUM(p.face_amount) AS total_face_amount
+FROM Policy p
+JOIN PolicyStatus ps ON p.status_id = ps.status_id
+GROUP BY ps.status_name;
+
+-- Query 3: Show each policy and its total beneficiary percentage (uses joins and aggregation)
+SELECT
+	p.policy_id,
+    CONCAT(ph.first_name, ' ', ph.last_name) AS policyholder_name,
+    SUM(b.percentage_share) AS total_beneficiary_percentage
+FROM Policy p
+JOIN Policyholder ph ON p.policyholder_id = ph.policyholder_id
+JOIN Beneficiary b ON p.policy_id = b.policy_id
+GROUP BY p.policy_id, policyholder_name;
+
+
+-- Query 4: Find the policies with above average face amounts for all policies (uses subquery)
+SELECT
+	policy_id,
+    face_amount,
+    issue_age
+FROM Policy
+WHERE face_amount > (
+	SELECT AVG(face_amount)
+    FROM Policy
+);
+
+-- Query 5: Show beneficiary estimated payouts of 100,000+ using view code, from largest to smallest order
+SELECT
+	policy_id,
+    beneficiary_name,
+    relationship,
+    percentage_share,
+    estimated_payout
+FROM view_beneficiary_payouts
+WHERE estimated_payout >= 100000
+ORDER BY estimated_payout DESC;
+
+-- ===============================
+-- Stored Procedure and Function... 
+-- this procedure and function make it easy for future business purposes if a certain way of calculating something or retrieving something were to be changed, it can be done easily in one place which is then reflected in all future calls.
+-- ===============================
+
+
+-- Procedure to get all the policies based on what status they are at
+-- for example: Call get_policies_by_status('Active') to get the active policies
+-- this uses a view which helps simplify the code using already written code rather than rewriting all the joins
+DELIMITER $$
+
+CREATE PROCEDURE get_policies_by_status(IN input_status_name VARCHAR(50))
+BEGIN
+	SELECT
+		policy_id, policyholder_name, sex, issue_date, issue_age, face_amount, class_name, status_name, basis_name
+	FROM view_policy_summary
+    WHERE status_name = input_status_name
+    ORDER BY face_amount DESC; -- descending from largest to smallest policy
+    
+END $$
+DELIMITER ;
 
 
 
 
 
+-- Function: calculates the estimated payout for a beneficiary
+-- For example: SELECT calculate_beneficiary_payout(500000.00, 60.00); would return 300000
+-- it takes the face amount and the percentage share and then returns the actual amount to be paid out
+
+DELIMITER $$
+
+CREATE FUNCTION calculate_beneficiary_payout(
+	input_face_amount DECIMAL(15,2),
+    input_percentage_share DECIMAL(5,2)
+    ) RETURNS DECIMAL(15,2)
+    DETERMINISTIC
+BEGIN
+	RETURN ROUND(input_face_amount * (input_percentage_share / 100), 2);
+END $$
+
+DELIMITER ;
