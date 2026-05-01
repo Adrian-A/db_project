@@ -6,7 +6,9 @@
 -- ============================================================
 -- DDL: CREATE TABLES
 -- ============================================================
-
+DROP DATABASE IF EXISTS life_insurance;
+CREATE DATABASE life_insurance;
+USE life_insurance;
 -- Drop tables in reverse dependency order to avoid FK conflicts
 DROP TABLE IF EXISTS MortalityRateUltimate;
 DROP TABLE IF EXISTS Claim;
@@ -338,3 +340,47 @@ BEGIN
     END IF;
 END$$
 DELIMITER ;
+
+
+-- -----------------------------------------------------------
+-- Views
+-- -----------------------------------------------------------
+
+-- View 1: Policy summary with the policyholder, class, status, and mortality basis
+CREATE VIEW view_policy_summary AS
+SELECT
+	p.policy_id,
+    ph.policyholder_id,
+    CONCAT(ph.first_name, ' ', ph.last_name)AS policyholder_name,
+    ph.sex,
+    p.issue_date,
+    p.issue_age,
+    p.face_amount,
+    uc.class_name,
+    ps.status_name,
+    mb.basis_name
+FROM Policy p
+JOIN Policyholder ph ON p.policyholder_id = ph.policyholder_id
+JOIN UnderwritingClass uc ON p.class_id = uc.class_id
+JOiN PolicyStatus ps ON p.status_id = ps.status_id
+JOIN MortalityBasis mb ON p.basis_id = mb.basis_id;
+
+-- View 2: Beneficiary payout amounts by policy
+CREATE VIEW view_beneficiary_payouts AS
+SELECT
+	b.beneficiary_id,
+    b.policy_id,
+    CONCAT(b.first_name, ' ', b.last_name) AS beneficiary_name,
+    b.relationship,
+    b.percentage_share,
+    p.face_amount,
+    ROUND(p.face_amount * (b.percentage_share / 100, 2) AS estimated_payout) -- rounding the amount to cents
+FROM Beneficiary b
+JOIN Policy p ON b.policy_id = p.policy_id;
+
+
+
+
+
+
+
