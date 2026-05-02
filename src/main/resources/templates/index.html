@@ -1,12 +1,31 @@
-<table xmlns:th="http://www.w3.org/1999/xhtml">
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Beneficiaries — CRUD</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body class="crud-page">
+<nav>
+    <a href="/queries">SQL queries (5)</a>
+</nav>
+
+<h1>Beneficiaries</h1>
+
+<div th:if="${error}" class="flash err" th:text="${error}"></div>
+<div th:if="${success}" class="flash ok" th:text="${success}"></div>
+
+<table>
     <thead>
     <tr>
         <th>ID</th>
         <th>Policy ID</th>
-        <th>First Name</th>
-        <th>Last Name</th>
+        <th>First name</th>
+        <th>Last name</th>
         <th>Relationship</th>
-        <th>% Share</th>
+        <th>% share</th>
+        <th class="actions">Actions</th>
     </tr>
     </thead>
     <tbody>
@@ -17,16 +36,56 @@
         <td th:text="${ben.last_name}"></td>
         <td th:text="${ben.relationship}"></td>
         <td th:text="${ben.percentage_share}"></td>
+        <td class="actions">
+            <a class="btn-link" th:href="@{/(editId=${ben.beneficiary_id})}">Edit</a>
+            <form th:action="@{/delete}" method="post" class="inline"
+                  onsubmit="return confirm('Delete this beneficiary?');">
+                <input type="hidden" name="beneficiaryId" th:value="${ben.beneficiary_id}"/>
+                <button type="submit" class="danger">Delete</button>
+            </form>
+        </td>
     </tr>
     </tbody>
 </table>
 
-<form action="/add" method="post">
-    <input type="number" name="benID" placeholder="Ben ID">
-    <input type="number" name="polID" placeholder="Policy ID">
-    <input type="text" name="first" placeholder="First Name">
-    <input type="text" name="last" placeholder="Last Name">
-    <input type="text" name="rel" placeholder="Relationship">
-    <input type="number" name="pct" placeholder="Percentage">
-    <button type="submit">Add Beneficiary</button>
-</form>
+<section>
+    <h2>Add beneficiary</h2>
+    <form th:action="@{/add}" method="post">
+        <div class="grid">
+            <label>Beneficiary ID <input type="number" name="benID" required step="1"/></label>
+            <label>Policy ID <input type="number" name="polID" required step="1"/></label>
+            <label>First name <input type="text" name="first" required/></label>
+            <label>Last name <input type="text" name="last" required/></label>
+            <label>Relationship <input type="text" name="rel" required/></label>
+            <label>% share <input type="number" name="pct" required step="0.01" min="0.01" max="100"/></label>
+        </div>
+        <button type="submit">Add beneficiary</button>
+    </form>
+</section>
+
+<section th:if="${editBeneficiary != null}">
+    <h2>Update beneficiary</h2>
+    <form th:action="@{/update}" method="post">
+        <input type="hidden" name="beneficiaryId" th:value="${editBeneficiary.beneficiary_id}"/>
+        <div class="grid">
+            <label>Beneficiary ID
+                <input type="number" th:value="${editBeneficiary.beneficiary_id}" disabled/>
+            </label>
+            <label>Policy ID <input type="number" name="polID" required step="1" th:value="${editBeneficiary.policy_id}"/></label>
+            <label>First name <input type="text" name="first" required th:value="${editBeneficiary.first_name}"/></label>
+            <label>Last name <input type="text" name="last" required th:value="${editBeneficiary.last_name}"/></label>
+            <label>Relationship <input type="text" name="rel" required th:value="${editBeneficiary.relationship}"/></label>
+            <label>% share <input type="number" name="pct" required step="0.01" min="0.01" max="100" th:value="${editBeneficiary.percentage_share}"/></label>
+        </div>
+        <button type="submit">Save changes</button>
+        <a class="btn-link spaced" href="/">Cancel</a>
+    </form>
+</section>
+
+<section th:if="${editBeneficiary == null}">
+    <h2>Update beneficiary</h2>
+    <p class="hint">Click <strong>Edit</strong> on a row to load values here.</p>
+</section>
+
+</body>
+</html>
