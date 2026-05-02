@@ -5,13 +5,13 @@ This project is a Spring Boot application designed to interact with a MySQL data
 ## 1. IntelliJ Cloning steps
 1. Open IntelliJ
 2. Press Clone Repository
-3. Go to GitHub and get the clone URL, located under <> code. Paste it into the URL field in IntelliJ and press clone
+3. Copy the clone url: <https://github.com/Adrian-A/db_project.git>. Paste it into the URL field in IntelliJ and press clone
 
 ## 2. Local Database Configuration
 Before running the application, you must set up your local database:
 1. Open **MySQL Workbench**.
 2. Create a schema called life_insurance and set that as your default schema
-3. Run the `lifeinsurancedb.sql` script provided in the root of this repository. This will create all the tables and insert initial test data.
+3. Run the `lifeinsurancedb.sql` script provided in the root of this repository. This will create all the tables, insert initial test data, make triggers, etc.
 
 ## 3. Project Configuration
 The `application.properties` file is **ignored by Git** for security. You must create it manually:
