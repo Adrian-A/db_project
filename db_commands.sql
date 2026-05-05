@@ -7,6 +7,7 @@ SELECT * FROM policy;
 SELECT * FROM policyholder;
 SELECT * FROM policystatus;
 SELECT * FROM underwritingclass;
+SELECT * FROM users;
 
 -- Commands for showing the views
 SELECT * FROM view_beneficiary_payouts;

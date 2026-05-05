@@ -486,3 +486,19 @@ BEGIN
 END $$
 
 DELIMITER ;
+
+DROP TABLE IF EXISTS users;
+-- Create login table
+CREATE TABLE users (
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(50) NOT NULL,
+     CONSTRAINT pk_login PRIMARY KEY (username)
+);
+
+INSERT INTO users (username, password) VALUES
+	('Adrian', '123456'),
+    ('Aidan', '09876'),
+    ('Giancarlo', '24680'),
+    ('Seth', 'abcde'),
+    ('Bella', 'PasSwOrd'),
+    ('Emma', 'S1gn1N');
