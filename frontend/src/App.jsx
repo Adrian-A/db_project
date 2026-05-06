@@ -27,6 +27,20 @@ const REPORT_TABS = [
   { key: 'q5', label: 'Large Payouts', dataKey: 'query5' }
 ]
 
+/** Short blurbs shown above each report table; keyed by REPORT_TABS[].key */
+const REPORT_TAB_DESCRIPTIONS = {
+  q1:
+    'Lists policies currently marked Active with holder demographics, issue terms, face amount, underwriting class, policy status, and mortality basis.',
+  q2:
+    'Aggregates policies by status—counts and summed face amounts.',
+  q3:
+    'Shows total beneficiary percentage allocation per policy (sum of shares against policies).',
+  q4:
+    'Policies whose face amount exceeds the overall portfolio average.',
+  q5:
+    'Estimated payouts from the beneficiary payout view where payout meets or exceeds $100,000, sorted largest first.'
+}
+
 const RELATIONSHIP_OPTIONS = [
   'Spouse',
   'Child',
@@ -1426,6 +1440,12 @@ function App() {
                   {tab.label}
                 </button>
               ))}
+            </div>
+            <div className="report-description">
+              <p>
+                {REPORT_TAB_DESCRIPTIONS[activeReportTab] ??
+                  'Select a tab above to view this report.'}
+              </p>
             </div>
             <div
               className="report-panel"
