@@ -88,6 +88,41 @@ app.put('/api/beneficiaries/:id', async (req, res) => {
   const { policy_id, first_name, last_name, relationship, percentage_share } = req.body;
 
   try {
+    const [currentRows] = await db.query(
+      `
+      SELECT beneficiary_id, policy_id
+      FROM Beneficiary
+      WHERE beneficiary_id = ?
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (currentRows.length === 0) {
+      return res.status(404).json({ error: 'Beneficiary not found.' });
+    }
+
+    const [sumRows] = await db.query(
+      `
+      SELECT COALESCE(SUM(percentage_share), 0) AS total_other_share
+      FROM Beneficiary
+      WHERE policy_id = ? AND beneficiary_id <> ?
+      `,
+      [policy_id, id]
+    );
+
+    const totalOtherShare = Number(sumRows[0]?.total_other_share || 0);
+    const incomingShare = Number(percentage_share);
+    if (Number.isNaN(incomingShare)) {
+      return res.status(400).json({ error: 'percentage_share must be numeric.' });
+    }
+    if (totalOtherShare + incomingShare > 100) {
+      return res.status(400).json({
+        error:
+          'Total beneficiary percentage share for this policy cannot exceed 100%.'
+      });
+    }
+
     const [result] = await db.query(
       `
       UPDATE Beneficiary
@@ -96,10 +131,6 @@ app.put('/api/beneficiaries/:id', async (req, res) => {
       `,
       [policy_id, first_name, last_name, relationship, percentage_share, id]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Beneficiary not found.' });
-    }
 
     return res.json({ success: true });
   } catch (error) {
@@ -187,6 +218,91 @@ app.delete('/api/policyholders/:id', async (req, res) => {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Policyholder not found.' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/claims', async (_req, res) => {
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT claim_id, policy_id, date_of_death, claim_amount, claim_status
+      FROM Claim
+      ORDER BY claim_id ASC
+      `
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/claims', async (req, res) => {
+  const { claim_id, policy_id, date_of_death, claim_amount, claim_status } = req.body;
+
+  try {
+    await db.query(
+      `
+      INSERT INTO Claim (claim_id, policy_id, date_of_death, claim_amount, claim_status)
+      VALUES (?, ?, ?, ?, ?)
+      `,
+      [claim_id, policy_id, date_of_death, claim_amount, claim_status]
+    );
+    // Insert trigger will automatically set policy status to 3 when claim_status = 'Paid'.
+    res.status(201).json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.put('/api/claims/:id', async (req, res) => {
+  const { id } = req.params;
+  const { policy_id, date_of_death, claim_amount, claim_status } = req.body;
+
+  try {
+    const [result] = await db.query(
+      `
+      UPDATE Claim
+      SET policy_id = ?, date_of_death = ?, claim_amount = ?, claim_status = ?
+      WHERE claim_id = ?
+      `,
+      [policy_id, date_of_death, claim_amount, claim_status, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Claim not found.' });
+    }
+
+    // Keep behavior aligned with insert trigger intent when status is changed by update.
+    if (claim_status === 'Paid') {
+      await db.query(
+        `
+        UPDATE Policy
+        SET status_id = 3
+        WHERE policy_id = ?
+        `,
+        [policy_id]
+      );
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+});
+
+app.delete('/api/claims/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await db.query('DELETE FROM Claim WHERE claim_id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Claim not found.' });
     }
 
     return res.json({ success: true });
@@ -287,6 +403,29 @@ app.get('/api/reports/query5', async (_req, res) => {
       FROM view_beneficiary_payouts
       WHERE estimated_payout >= 100000
       ORDER BY estimated_payout DESC
+    `);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/views/policy-summary', async (_req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT
+        policy_id,
+        policyholder_id,
+        policyholder_name,
+        sex,
+        issue_date,
+        issue_age,
+        face_amount,
+        class_name,
+        status_name,
+        basis_name
+      FROM view_policy_summary
+      ORDER BY policy_id ASC
     `);
     res.json(rows);
   } catch (error) {
