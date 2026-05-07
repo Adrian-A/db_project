@@ -13,6 +13,11 @@ SELECT * FROM users;
 SELECT * FROM view_beneficiary_payouts;
 SELECT * FROM view_policy_summary;
 
+-- Procedure Command
+CALL get_policies_by_status('Active');
+-- Function Comand
+SELECT calculate_beneficiary_payout(500000.00, 60.00);
+
 -- Commands for showing the 5 queries
 -- Query 1: Show all *ACTIVE* policies with policyholder, class, status, and mortality basis
 -- Uses joins

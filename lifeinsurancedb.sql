@@ -446,7 +446,8 @@ ORDER BY estimated_payout DESC;
 
 -- ===============================
 -- Stored Procedure and Function... 
--- this procedure and function make it easy for future business purposes if a certain way of calculating something or retrieving something were to be changed, it can be done easily in one place which is then reflected in all future calls.
+-- this procedure and function make it easy for future business purposes if a certain way of calculating something or retrieving something were to be changed, 
+-- it can be done easily in one place which is then reflected in all future calls.
 -- ===============================
 
 
